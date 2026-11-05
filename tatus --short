@@ -1,0 +1,60 @@
+ .backups/v33-before-audit-2026-10-19.zip           |  Bin [31m0[m -> [32m4668510[m bytes
+ .backups/v48-before-refactor-2026-10-26-001636.zip |  Bin [31m0[m -> [32m3940345[m bytes
+ .gitignore                                         |    5 [32m+[m
+ README.md                                          |  212 [32m+++[m
+ app.js                                             |  577 [32m+++++++[m
+ assets/brand/at-logo-horizontal.png                |  Bin [31m0[m -> [32m28281[m bytes
+ assets/brand/at-logo-stacked.png                   |  Bin [31m0[m -> [32m19647[m bytes
+ assets/fonts/Montserrat-Bold.ttf                   |  Bin [31m0[m -> [32m261588[m bytes
+ assets/fonts/Montserrat-SemiBold.ttf               |  Bin [31m0[m -> [32m260936[m bytes
+ assets/fonts/Roboto-Medium.ttf                     |  Bin [31m0[m -> [32m172064[m bytes
+ assets/fonts/Roboto-Regular.ttf                    |  Bin [31m0[m -> [32m171676[m bytes
+ assets/vendor/html2canvas-1.4.1.min.js             |   20 [32m+[m
+ assets/vendor/html2canvas-LICENSE.txt              |   22 [32m+[m
+ assets/vendor/jspdf-4.2.1.umd.min.js               |  373 [32m+++++[m
+ assets/vendor/jspdf-LICENSE.txt                    |   22 [32m+[m
+ dev_server.py                                      |  115 [32m++[m
+ docs/ARCHITECTURE.md                               |  133 [32m++[m
+ docs/AUDIT-2026-10-26.md                           |  103 [32m++[m
+ icons/app-icon-192.png                             |  Bin [31m0[m -> [32m33646[m bytes
+ icons/app-icon-512.png                             |  Bin [31m0[m -> [32m236304[m bytes
+ icons/app-icon-64.png                              |  Bin [31m0[m -> [32m5910[m bytes
+ icons/app-icon-maskable-512.png                    |  Bin [31m0[m -> [32m117827[m bytes
+ icons/app-icon-master.png                          |  Bin [31m0[m -> [32m949109[m bytes
+ icons/app-icon.png                                 |  Bin [31m0[m -> [32m5910[m bytes
+ icons/apple-touch-icon.png                         |  Bin [31m0[m -> [32m25530[m bytes
+ index.html                                         |  245 [32m+++[m
+ inventario_radiactivo.csv                          |   28 [32m+[m
+ isotopos.csv                                       |    8 [32m+[m
+ manifest.webmanifest                               |   35 [32m+[m
+ package-lock.json                                  |  284 [32m++++[m
+ package.json                                       |   26 [32m+[m
+ precache-manifest.js                               |  126 [32m++[m
+ scripts/check-syntax.mjs                           |   11 [32m+[m
+ scripts/release.mjs                                |   42 [32m+[m
+ scripts/test-browser.cjs                           |   33 [32m+[m
+ server.ps1                                         |   64 [32m+[m
+ src/config.js                                      |   27 [32m+[m
+ src/csv.js                                         |   67 [32m+[m
+ src/domain.js                                      |  427 [32m+++++[m
+ src/format.js                                      |  128 [32m++[m
+ src/measurements.js                                |   44 [32m+[m
+ src/pdf.js                                         |  293 [32m++++[m
+ src/pwa.js                                         |  135 [32m++[m
+ src/report-layout.js                               |  106 [32m++[m
+ src/report.js                                      |  278 [32m++++[m
+ src/repository.js                                  |  277 [32m++++[m
+ src/view.js                                        |  202 [32m+++[m
+ styles.css                                         | 1654 [32m++++++++++++++++++++[m
+ sw.js                                              |  151 [32m++[m
+ tabla_fuentes_certificados.md                      |   26 [32m+[m
+ tabla_muestras_materiales.md                       |   49 [32m+[m
+ tests/audit.cjs                                    |  972 [32m++++++++++++[m
+ tests/data.test.mjs                                |  122 [32m++[m
+ tests/domain.test.mjs                              |  316 [32m++++[m
+ tests/firefox-smoke.cjs                            |    6 [32m+[m
+ tests/resilience-browser.cjs                       |  204 [32m+++[m
+ tests/resilience.test.mjs                          |  144 [32m++[m
+ tests/service-worker.test.mjs                      |  132 [32m++[m
+ tests/update-browser.cjs                           |   93 [32m++[m
+ 59 files changed, 8337 insertions(+)

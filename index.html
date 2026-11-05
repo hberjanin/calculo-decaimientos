@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1d1d1b">
+  <meta name="color-scheme" content="light">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Decaimientos">
+  <meta name="description" content="Cálculo de decaimientos para fuentes radiactivas y material contaminado de Aplicaciones Tecnológicas.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; connect-src 'self'; font-src 'self' data:; form-action 'self'; frame-src 'none'; img-src 'self' data:; manifest-src 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self'">
+  <title>Cálculo de decaimientos</title>
+  <link rel="manifest" href="manifest.webmanifest?v=51">
+  <link rel="icon" href="icons/app-icon.png?v=51" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=51">
+  <link rel="stylesheet" href="styles.css?v=51">
+</head>
+<body>
+  <a class="skip-link" href="#mainContent">Saltar al contenido</a>
+
+  <div id="updateBanner" class="update-banner hidden" role="status">
+    <span>Hay una versión nueva preparada.</span>
+    <button id="updateButton" class="button light compact-button" type="button">Actualizar</button>
+  </div>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-block">
+        <img class="brand-logo" src="assets/brand/at-logo-horizontal.png?v=51" width="305" height="41" alt="Aplicaciones Tecnológicas Radiation Protection &amp; Medical">
+        <span class="brand-divider" aria-hidden="true"></span>
+        <img class="app-mark" src="icons/app-icon.png?v=51" width="52" height="52" alt="">
+        <div class="app-name">
+          <h1>Cálculo de decaimientos</h1>
+          <span>Actividad radiactiva</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="installButton" class="button secondary hidden" type="button">Instalar</button>
+        <button id="reportButton" class="button primary" type="button" data-requires-model disabled>Generar informe</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="mainContent" tabindex="-1">
+    <div class="control-grid">
+      <section class="control-panel date-panel" aria-labelledby="datePanelTitle">
+        <div class="control-heading">
+          <h2 id="datePanelTitle">Fecha de cálculo</h2>
+          <p id="dateSummary">Actividad calculada para hoy</p>
+        </div>
+        <label class="field-label" for="calculationDate">Seleccionar fecha</label>
+        <input id="calculationDate" type="date" min="0001-01-01" max="9999-12-31" required>
+      </section>
+
+      <section class="control-panel search-panel" aria-labelledby="searchPanelTitle">
+        <div class="control-heading">
+          <h2 id="searchPanelTitle">Buscar</h2>
+          <p>Por isótopo o identificador</p>
+        </div>
+        <label class="field-label" for="searchInput">Término de búsqueda</label>
+        <input id="searchInput" type="search" placeholder="Isótopo o identificador" autocomplete="off" spellcheck="false">
+      </section>
+
+      <section class="control-panel data-panel" aria-labelledby="dataPanelTitle">
+        <div class="control-heading">
+          <h2 id="dataPanelTitle">Datos</h2>
+          <p>Gestionar registros y semividas</p>
+        </div>
+        <div class="data-actions">
+          <button id="inventoryButton" class="button primary" type="button" data-requires-model disabled>Añadir fuente o material</button>
+          <button id="isotopesButton" class="button secondary" type="button" data-requires-model disabled>Tabla de isótopos</button>
+          <button id="backupButton" class="button secondary" type="button">Guardar copia</button>
+        </div>
+      </section>
+    </div>
+
+    <aside class="local-status" aria-label="Estado del almacenamiento y modo offline">
+      <p id="offlineStatus" role="status">Comprobando el modo offline…</p>
+      <button id="repairOffline" class="small-button" type="button">Reparar modo offline</button>
+      <p id="storageStatus" class="form-status hidden" role="status"></p>
+    </aside>
+
+    <section id="summary" class="summary-strip" aria-label="Resumen de elementos"></section>
+
+    <div class="results-toolbar">
+      <div class="tabs" role="tablist" aria-label="Tipo de elemento">
+        <button class="tab active" role="tab" data-filter="all" type="button" aria-selected="true" aria-controls="sourceList" tabindex="0">Todos <span id="countAll">0</span></button>
+        <button class="tab" role="tab" data-filter="point" type="button" aria-selected="false" aria-controls="sourceList" tabindex="-1">Fuentes puntuales <span id="countPoint">0</span></button>
+        <button class="tab" role="tab" data-filter="material" type="button" aria-selected="false" aria-controls="sourceList" tabindex="-1">Material contaminado <span id="countMaterial">0</span></button>
+      </div>
+      <div class="results-heading">
+        <h2 id="listTitle">Todos los elementos</h2>
+        <p id="resultCount" role="status" aria-live="polite">Cargando…</p>
+      </div>
+    </div>
+
+    <section id="sourceList" class="source-list" role="tabpanel" aria-labelledby="listTitle"></section>
+    <section id="emptyState" class="empty-state hidden" role="status">
+      <h2 id="emptyTitle">Sin resultados</h2>
+      <p id="emptyMessage">Revisa la búsqueda o el filtro seleccionado.</p>
+    </section>
+  </main>
+
+  <dialog id="inventoryDialog" aria-labelledby="inventoryDialogTitle" aria-describedby="inventoryDialogSubtitle">
+    <form id="inventoryForm" class="dialog-shell" novalidate>
+      <header class="dialog-header">
+        <div>
+          <h2 id="inventoryDialogTitle">Añadir fuente o material</h2>
+          <p id="inventoryDialogSubtitle">Los campos con asterisco son obligatorios.</p>
+        </div>
+        <button id="closeInventory" class="icon-button" type="button" aria-label="Cerrar">×</button>
+      </header>
+      <div class="dialog-content form-grid">
+        <label class="field-group" for="inventoryType"><span class="label-text">Tipo <span aria-hidden="true">*</span></span>
+          <select id="inventoryType" required>
+            <option value="fuente_puntual">Fuente puntual</option>
+            <option value="material_contaminado">Material contaminado</option>
+          </select>
+        </label>
+        <label class="field-group" for="inventoryId"><span class="label-text">Identificador / NS <span aria-hidden="true">*</span></span>
+          <input id="inventoryId" type="text" required maxlength="120" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="field-group" for="inventoryIsotope"><span class="label-text">Isótopo <span aria-hidden="true">*</span></span>
+          <select id="inventoryIsotope" required></select>
+        </label>
+        <label class="field-group" for="inventoryReferenceDate"><span class="label-text">Fecha de referencia <span aria-hidden="true">*</span></span>
+          <input id="inventoryReferenceDate" type="date" min="0001-01-01" max="9999-12-31" required>
+        </label>
+        <label class="field-group" for="inventoryActivity">Actividad de referencia (Bq)
+          <input id="inventoryActivity" type="number" min="0" step="any" inputmode="decimal">
+        </label>
+        <label class="field-group" for="inventoryOperator">Naturaleza del valor
+          <select id="inventoryOperator">
+            <option value="=">Valor certificado</option>
+            <option value="&lt;">Límite superior</option>
+          </select>
+        </label>
+        <label class="field-group material-field hidden" for="inventoryMass"><span class="label-text">Masa (g) <span aria-hidden="true">*</span></span>
+          <input id="inventoryMass" type="number" min="0" step="any" inputmode="decimal" disabled>
+        </label>
+        <label class="field-group material-field hidden" for="inventorySpecificActivity">Actividad específica (Bq/g)
+          <input id="inventorySpecificActivity" type="number" min="0" step="any" inputmode="decimal" disabled>
+        </label>
+        <label class="field-group" for="inventoryUncertainty">Incertidumbre de actividad (Bq)
+          <input id="inventoryUncertainty" type="number" min="0" step="any" inputmode="decimal">
+        </label>
+        <label class="field-group material-field hidden" for="inventorySpecificUncertainty">Incertidumbre específica (Bq/g)
+          <input id="inventorySpecificUncertainty" type="number" min="0" step="any" inputmode="decimal" disabled>
+        </label>
+        <label class="field-group form-span" for="inventoryUncertaintyType">Información metrológica
+          <input id="inventoryUncertaintyType" type="text" maxlength="160" autocomplete="off" placeholder="Ej. Incertidumbre expandida (k = 2)">
+        </label>
+        <label class="field-group form-span" for="inventoryNotes">Observaciones
+          <textarea id="inventoryNotes" rows="3" maxlength="2000"></textarea>
+        </label>
+        <p id="inventoryStatus" class="form-status error hidden form-span" role="alert"></p>
+      </div>
+      <footer class="dialog-footer">
+        <button id="cancelInventory" class="button secondary" type="button">Cancelar</button>
+        <button id="saveInventory" class="button primary" type="submit">Añadir</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="isotopesDialog" aria-labelledby="isotopesDialogTitle" aria-describedby="isotopesDialogSubtitle">
+    <div class="dialog-shell wide-dialog">
+      <header class="dialog-header">
+        <div>
+          <h2 id="isotopesDialogTitle">Tabla de isótopos</h2>
+          <p id="isotopesDialogSubtitle">Semividas empleadas en los cálculos.</p>
+        </div>
+        <button id="closeIsotopes" class="icon-button" type="button" aria-label="Cerrar">×</button>
+      </header>
+      <div class="dialog-content">
+        <div id="isotopeTable" class="table-scroll"></div>
+        <p id="isotopeStatus" class="form-status error hidden isotope-form-status" role="alert"></p>
+        <section id="isotopeEditor" class="isotope-editor hidden" aria-labelledby="isotopeEditorTitle">
+          <h3 id="isotopeEditorTitle">Añadir isótopo</h3>
+          <form id="isotopeForm" class="isotope-form" novalidate>
+            <label class="field-group" for="isotopeName"><span class="label-text">Isótopo <span aria-hidden="true">*</span></span>
+              <input id="isotopeName" type="text" required maxlength="40" autocomplete="off" spellcheck="false" placeholder="Ej. Co-60">
+            </label>
+            <label class="field-group" for="isotopeHalfLife"><span class="label-text">Semivida <span aria-hidden="true">*</span></span>
+              <input id="isotopeHalfLife" type="number" required min="0" step="any" inputmode="decimal">
+            </label>
+            <label class="field-group" for="isotopeUnit"><span class="label-text">Unidad <span aria-hidden="true">*</span></span>
+              <select id="isotopeUnit">
+                <option value="anos">Años</option>
+                <option value="dias">Días</option>
+                <option value="horas">Horas</option>
+              </select>
+            </label>
+            <label class="field-group" for="isotopeSource">Fuente del dato
+              <input id="isotopeSource" type="text" maxlength="200" autocomplete="off" placeholder="Ej. DDEP-LNHB">
+            </label>
+            <div class="editor-actions">
+              <button id="cancelIsotopeEdit" class="button secondary" type="button">Cancelar</button>
+              <button id="saveIsotope" class="button primary" type="submit">Guardar</button>
+            </div>
+          </form>
+        </section>
+      </div>
+      <footer class="dialog-footer">
+        <button id="addIsotope" class="button primary" type="button">Añadir isótopo</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <dialog id="reportDialog" aria-labelledby="reportDialogTitle" aria-describedby="reportDialogSubtitle">
+    <div class="dialog-shell report-dialog">
+      <header class="dialog-header">
+        <div>
+          <h2 id="reportDialogTitle">Generar informe</h2>
+          <p id="reportDialogSubtitle">Se creará un PDF local con la fecha de cálculo seleccionada.</p>
+        </div>
+        <button id="closeReport" class="icon-button" type="button" aria-label="Cerrar">×</button>
+      </header>
+      <div class="dialog-content">
+        <label class="check-row" for="reportVisibleOnly">
+          <input id="reportVisibleOnly" type="checkbox">
+          <span>Incluir solo los elementos visibles</span>
+        </label>
+        <p id="reportStatus" class="form-status hidden" role="status"></p>
+      </div>
+      <footer class="dialog-footer report-actions">
+        <button id="cancelReport" class="button secondary" type="button">Cancelar</button>
+        <button id="shareReport" class="button secondary" type="button">Compartir</button>
+        <button id="downloadReport" class="button primary" type="button">Descargar PDF</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <section id="printReportView" class="print-report" aria-hidden="true"></section>
+  <div id="toast" class="toast hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+  <textarea class="clipboard-fallback" aria-hidden="true" tabindex="-1"></textarea>
+
+  <noscript>
+    <div class="noscript-message">Esta aplicación necesita JavaScript para calcular el decaimiento y gestionar los datos.</div>
+  </noscript>
+  <script src="assets/vendor/html2canvas-1.4.1.min.js?v=51"></script>
+  <script src="assets/vendor/jspdf-4.2.1.umd.min.js?v=51"></script>
+  <script src="app.js?v=51" type="module"></script>
+</body>
+</html>

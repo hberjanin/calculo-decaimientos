@@ -1,0 +1,28 @@
+tipo;identificacion;radionuclido;masa_g;actividad_especifica_bq_g;incertidumbre_especifica_bq_g;operador_actividad;actividad_referencia_bq;incertidumbre_actividad_bq;fecha_referencia;tipo_incertidumbre;observaciones
+fuente_puntual;1105141;Eu-152;;;;=;31857;;2014-11-05;incertidumbre_no_indicada_en_el_certificado;Fuente sellada calibrada mediante HPGe
+fuente_puntual_mixta;BB-8485;Am-241;;;;=;200;;2021-04-01;tolerancia_mas_30_menos_20_por_ciento;Actividad nominal
+fuente_puntual_mixta;BB-8485;Co-60;;;;=;200;;2021-04-01;tolerancia_mas_30_menos_20_por_ciento;Actividad nominal
+fuente_puntual_mixta;BB-8485;Cs-137;;;;=;200;;2021-04-01;tolerancia_mas_30_menos_20_por_ciento;Actividad nominal
+fuente_puntual;081020-1296089;Eu-152;;;;=;468600;3300;2024-10-30;estandar_combinada_k1;Existe un certificado duplicado documental
+fuente_puntual;3682;Cs-137;;;;=;555;;;nominal_mas_menos_20_por_ciento;Sin fecha de referencia no se puede calcular el decaimiento
+fuente_puntual;NG 150;Eu-152;;;;=;390000;11700;2005-04-01;expandida_k2_3_por_ciento;Hora de referencia 12:00 MESZ
+fuente_puntual;1382-24-3;Eu-152;;;;=;188200;5646;2009-06-01;total_99_por_ciento_3_por_ciento;Hora de referencia 12:00 PST
+fuente_puntual;411068;Eu-152;;;;=;33707;;2006-04-11;incertidumbre_no_indicada_en_el_certificado;El numero impreso en el certificado es 411068
+fuente_puntual_mixta;110722-1561112;Co-60;;;;=;642.5;7.6;2022-08-10;estandar_combinada_k1;Fuente EMM 32
+fuente_puntual_mixta;110722-1561112;Cs-137;;;;=;602.6;9.1;2022-08-10;estandar_combinada_k1;Fuente EMM 32
+fuente_puntual_mixta;110722-1561112;Am-241;;;;=;620.7;7.0;2022-08-10;estandar_combinada_k1;Fuente EMM 32
+muestra_contaminada;O21149 Am-241;Am-241;92.84;36.3;4.2;=;3370.092;389.928;2021-11-01;expandida_k2;Limite de deteccion 0.2 Bq/g
+muestra_natural_mix;O21149 Natural MIX;Ra-226;58.04;0.33;0.02;=;19.1532;1.1608;2021-11-01;expandida_k2;Limite de deteccion 0.02 Bq/g
+muestra_natural_mix;O21149 Natural MIX;Th-232;58.04;0.04;;<;2.3216;;2021-11-01;limite_de_deteccion;Resultado inferior al limite de deteccion
+muestra_natural_mix;O21149 Natural MIX;K-40;58.04;5.51;0.54;=;319.8004;31.3416;2021-11-01;expandida_k2;Limite de deteccion 0.36 Bq/g
+muestra_contaminada;O21121-K-40;K-40;100.38;13.9;1.3;=;1395.282;130.494;2021-09-15;expandida_k2;Referencia de informe O21121-K-40. Informe 21239
+muestra_contaminada;O21121-Co-60;Co-60;90.20;0.89;0.07;=;80.278;6.314;2021-09-15;expandida_k2;Referencia de informe O21121-Co-60. Informe 21239
+muestra_contaminada;O21121-Cs-137;Cs-137;90.74;12.98;0.41;=;1177.8052;37.2034;2021-09-15;expandida_k2;Referencia de informe O21121-Cs-137. Informe 21239
+muestra_contaminada;O21121-Th-232;Th-232;88.12;22.0;3.8;=;1938.64;334.856;2021-09-15;expandida_k2;Referencia de informe O21121-Th-232. Informe 21239
+muestra_contaminada;O21121-Ra-226;Ra-226;88.42;15.4;1.3;=;1361.668;114.946;2021-09-15;expandida_k2;Referencia de informe O21121-Ra-226. Informe 21239
+blanco_bg;O21121-BG;Ra-226;86.80;0.01;;<;0.868;;2021-09-15;limite_de_deteccion;Referencia de informe O21121-BG. Resultado inferior al limite de deteccion
+blanco_bg;O21121-BG;Th-232;86.80;0.03;;<;2.604;;2021-09-15;limite_de_deteccion;Referencia de informe O21121-BG. Resultado inferior al limite de deteccion
+blanco_bg;O21121-BG;K-40;86.80;0.10;;<;8.680;;2021-09-15;limite_de_deteccion;Referencia de informe O21121-BG. Resultado inferior al limite de deteccion
+blanco_bg;O21121-BG;Cs-137;86.80;0.01;;<;0.868;;2021-09-15;limite_de_deteccion;Referencia de informe O21121-BG. Resultado inferior al limite de deteccion
+blanco_bg;O21121-BG;Co-60;86.80;0.01;;<;0.868;;2021-09-15;limite_de_deteccion;Referencia de informe O21121-BG. Resultado inferior al limite de deteccion
+disco_acero;O21121_7;Co-60;74.1;0.81;;<;60.021;;2021-09-01;limite_superior;Disco de acero de 35 mm de diametro y 10 mm de altura
