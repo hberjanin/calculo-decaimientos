@@ -11,25 +11,26 @@
   <meta name="description" content="Cálculo de decaimientos para fuentes radiactivas y material contaminado de Aplicaciones Tecnológicas.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; connect-src 'self'; font-src 'self' data:; form-action 'self'; frame-src 'none'; img-src 'self' data:; manifest-src 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self'">
   <title>Cálculo de decaimientos</title>
-  <link rel="manifest" href="manifest.webmanifest?v=51">
-  <link rel="icon" href="icons/app-icon.png?v=51" type="image/png">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=51">
-  <link rel="stylesheet" href="styles.css?v=51">
+  <link rel="manifest" href="manifest.webmanifest?v=53">
+  <link rel="icon" href="icons/app-icon.png?v=53" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=53">
+  <link rel="stylesheet" href="styles.css?v=53">
 </head>
 <body>
   <a class="skip-link" href="#mainContent">Saltar al contenido</a>
 
   <div id="updateBanner" class="update-banner hidden" role="status">
-    <span>Hay una versión nueva preparada.</span>
-    <button id="updateButton" class="button light compact-button" type="button">Actualizar</button>
+    <span id="updateMessage">Hay una versión nueva preparada. ¿Quieres actualizar y reiniciar la aplicación?</span>
+    <button id="updateButton" class="button light compact-button" type="button">Actualizar y reiniciar</button>
+    <button id="postponeUpdate" class="button light compact-button" type="button">Más tarde</button>
   </div>
 
   <header class="app-header">
     <div class="header-inner">
       <div class="brand-block">
-        <img class="brand-logo" src="assets/brand/at-logo-horizontal.png?v=51" width="305" height="41" alt="Aplicaciones Tecnológicas Radiation Protection &amp; Medical">
+        <img class="brand-logo" src="assets/brand/at-logo-horizontal.png?v=53" width="305" height="41" alt="Aplicaciones Tecnológicas Radiation Protection &amp; Medical">
         <span class="brand-divider" aria-hidden="true"></span>
-        <img class="app-mark" src="icons/app-icon.png?v=51" width="52" height="52" alt="">
+        <img class="app-mark" src="icons/app-icon.png?v=53" width="52" height="52" alt="">
         <div class="app-name">
           <h1>Cálculo de decaimientos</h1>
           <span>Actividad radiactiva</span>
@@ -78,6 +79,8 @@
     <aside class="local-status" aria-label="Estado del almacenamiento y modo offline">
       <p id="offlineStatus" role="status">Comprobando el modo offline…</p>
       <button id="repairOffline" class="small-button" type="button">Reparar modo offline</button>
+      <button id="checkUpdates" class="small-button" type="button" disabled>Buscar actualizaciones</button>
+      <p id="updateStatus" class="update-status hidden" role="status" aria-atomic="true"></p>
       <p id="storageStatus" class="form-status hidden" role="status"></p>
     </aside>
 
@@ -217,6 +220,16 @@
         <button id="closeReport" class="icon-button" type="button" aria-label="Cerrar">×</button>
       </header>
       <div class="dialog-content">
+        <label class="field-group" for="reportKind">Contenido del PDF
+          <select id="reportKind">
+            <option value="report">Informe de actividades</option>
+            <option value="labels">Etiquetas de actividades</option>
+          </select>
+        </label>
+        <label id="labelOptions" class="field-group hidden" for="labelQuantity">Etiquetas por elemento (1–100)
+          <input id="labelQuantity" type="number" min="1" max="100" step="1" value="1" inputmode="numeric" aria-describedby="labelHelp">
+          <small id="labelHelp">Máximo 1000 por archivo. A4 horizontal, sin plantilla de papel adhesivo.</small>
+        </label>
         <label class="check-row" for="reportVisibleOnly">
           <input id="reportVisibleOnly" type="checkbox">
           <span>Incluir solo los elementos visibles</span>
@@ -238,8 +251,8 @@
   <noscript>
     <div class="noscript-message">Esta aplicación necesita JavaScript para calcular el decaimiento y gestionar los datos.</div>
   </noscript>
-  <script src="assets/vendor/html2canvas-1.4.1.min.js?v=51"></script>
-  <script src="assets/vendor/jspdf-4.2.1.umd.min.js?v=51"></script>
-  <script src="app.js?v=51" type="module"></script>
+  <script src="assets/vendor/html2canvas-1.4.1.min.js?v=53"></script>
+  <script src="assets/vendor/jspdf-4.2.1.umd.min.js?v=53"></script>
+  <script src="app.js?v=53" type="module"></script>
 </body>
 </html>

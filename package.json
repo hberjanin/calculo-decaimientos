@@ -1,6 +1,6 @@
 {
   "name": "calculo-decaimientos",
-  "version": "51.0.0",
+  "version": "53.0.0",
   "private": true,
   "type": "module",
   "description": "PWA local para calcular el decaimiento de fuentes radiactivas y materiales contaminados.",

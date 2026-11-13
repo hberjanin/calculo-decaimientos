@@ -1,4 +1,4 @@
-export const APP_VERSION = '51';
+export const APP_VERSION = '53';
 export const SCHEMA_VERSION = 2;
 
 // Monographie BIPM-5: 1 a = 365.242198 d = 31 556 926 s.

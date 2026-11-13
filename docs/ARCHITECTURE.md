@@ -35,12 +35,22 @@ Un registro histórico con fecha desconocida puede editarse conservándola
 vacía. Sigue siendo no calculable. Una nueva fuente requiere fecha. El editor
 conserva el descriptor metrológico original si no se ha modificado su texto.
 
+El formato visual utiliza notación científica si una cantidad positiva quedaría
+redondeada a cero, también en masas pequeñas. Esto no cambia el valor guardado.
+
 ## Persistencia y recuperación
 
 Se conserva el esquema 2 y las claves existentes. El repositorio lee antes de
 decidir si el almacenamiento es utilizable: que una cuota esté llena no debe
 ocultar datos legibles. Si la lectura está bloqueada se utiliza memoria, con
 aviso permanente y exportación de la sesión disponible.
+
+Si una lectura falla después de resolver el almacenamiento, se bloquean las
+escrituras de esa sesión: un error de permisos no equivale a una clave ausente.
+La exportación conserva el modelo visible y advierte si no pudo leer todas las
+claves. Una historia de recuperación con entradas inválidas se conserva sin
+intentar repararla destructivamente. El contador de revisiones no puede superar
+el mayor entero seguro de JavaScript.
 
 Cada guardado compara revisión y contenido observado. Antes de sustituir un
 estado válido se escribe una copia válida. Un error al escribir la copia
@@ -71,6 +81,15 @@ instalación cuando termina la caché. Una publicación incompleta o mezclada se
 rechaza. Las huellas comprueban coherencia de la publicación; no sustituyen TLS
 ni constituyen una firma del proveedor.
 
+`.gitattributes` fija LF en los archivos de texto para que las huellas coincidan
+entre Windows, el commit y GitHub Pages. Las imágenes, fuentes y copias ZIP
+conservan sus bytes binarios. Se comprueban también los recursos del índice Git
+antes de publicar.
+
+Las descargas de reparación tienen un límite de 15 segundos y se cancelan si
+el servidor no responde. Comprobar o reparar una caché íntegra sin conexión no
+la marca como dañada solo porque falle la búsqueda de actualizaciones de red.
+
 La navegación comprueba presencia e integridad del shell. Ante corrupción
 intenta repararlo con conexión; offline utiliza una publicación anterior
 completa con metadatos verificables o presenta una página de recuperación.
@@ -87,6 +106,18 @@ Ninguna operación del service worker modifica localStorage.
 
 La actualización necesita aceptación y se pospone si hay un diálogo, un
 guardado o una generación PDF activos. Las otras pestañas conservan su estado.
+`pwa.js` busca actualizaciones al arrancar y al pulsar el botón de búsqueda.
+Espera a que el worker termine la instalación y comprueba los recursos antes
+de ofrecer **Actualizar y reiniciar**. **Más tarde** oculta el aviso durante esa
+sesión. Una búsqueda manual o un nuevo arranque vuelve a ofrecer la versión.
+La búsqueda tiene un límite de 30 segundos y deja el botón disponible para
+reintentar. Las búsquedas repetidas se agrupan mientras hay una en curso.
+El estado de actualización se muestra separado del estado de la caché offline.
+
+El permiso solo autoriza el reinicio de la pestaña que lo acepta. Se vuelve a
+comprobar si está ocupada cuando cambia el controlador, porque se puede abrir
+un formulario durante la activación. Si otra pestaña activó la versión nueva,
+el aviso ofrece recargar esta pestaña con el mismo permiso y comprobaciones.
 La instalación PWA, el envío real por Web Share y los permisos del sistema
 requieren validación final en los dispositivos de destino.
 
@@ -102,6 +133,11 @@ se dividen por registros con un encabezado de continuación, sin reducir letra.
 Las etiquetas incluyen actividad actual, incertidumbre o límite, unidades,
 masa e información metrológica, con cantidad configurable y un límite explícito
 de 1000 por archivo para evitar agotar la memoria del dispositivo.
+
+`labels.js` repite referencias a grupos sin modificar el inventario y reutiliza
+la composición del informe. La selección, los isótopos y la fecha se capturan
+antes de cualquier espera: PDF y texto compartido pertenecen al mismo modelo
+aunque otra pestaña guarde cambios durante la generación.
 
 Cada página se rasteriza por separado a escala 2 con html2canvas y se incorpora
 a jsPDF. CSS, imágenes y tipografías se incrustan en el documento de captura:

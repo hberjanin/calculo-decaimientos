@@ -1,6 +1,6 @@
 @font-face {
   font-family: "Montserrat";
-  src: url("assets/fonts/Montserrat-SemiBold.ttf?v=51") format("truetype");
+  src: url("assets/fonts/Montserrat-SemiBold.ttf?v=53") format("truetype");
   font-style: normal;
   font-weight: 600;
   font-display: swap;
@@ -8,7 +8,7 @@
 
 @font-face {
   font-family: "Montserrat";
-  src: url("assets/fonts/Montserrat-Bold.ttf?v=51") format("truetype");
+  src: url("assets/fonts/Montserrat-Bold.ttf?v=53") format("truetype");
   font-style: normal;
   font-weight: 700;
   font-display: swap;
@@ -16,7 +16,7 @@
 
 @font-face {
   font-family: "Roboto";
-  src: url("assets/fonts/Roboto-Regular.ttf?v=51") format("truetype");
+  src: url("assets/fonts/Roboto-Regular.ttf?v=53") format("truetype");
   font-style: normal;
   font-weight: 400;
   font-display: swap;
@@ -24,7 +24,7 @@
 
 @font-face {
   font-family: "Roboto";
-  src: url("assets/fonts/Roboto-Medium.ttf?v=51") format("truetype");
+  src: url("assets/fonts/Roboto-Medium.ttf?v=53") format("truetype");
   font-style: normal;
   font-weight: 500;
   font-display: swap;
@@ -164,6 +164,7 @@ h3 {
   z-index: 50;
   top: 0;
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   align-items: center;
   justify-content: center;
@@ -1641,6 +1642,7 @@ body.modal-open::after {
 
 .local-status p { margin: 0; }
 .local-status .form-status { flex-basis: 100%; }
+.local-status .update-status { flex-basis: 100%; }
 #labelOptions { margin-top: 16px; }
 .report-nuclide-heading > * { min-width: 0; overflow-wrap: anywhere; }
 

@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const VERSION = require('../package.json').version.split('.')[0];
 
 module.exports = async function ({ chromium, webkit, devices, baseUrl, output, check, assertPdfBuffer }) {
   const browser = await chromium.launch({ headless: true });
@@ -21,7 +22,7 @@ module.exports = async function ({ chromium, webkit, devices, baseUrl, output, c
     });
   }
   async function readyOffline(page) {
-    await page.evaluate(async () => { await navigator.serviceWorker.ready; if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true })); });
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller), null, { timeout: 20000 });
     await page.locator('#offlineStatus').filter({ hasText: 'Lista para usar' }).waitFor();
   }
   async function fillSource(page, id) {
@@ -40,6 +41,96 @@ module.exports = async function ({ chromium, webkit, devices, baseUrl, output, c
     assertPdfBuffer(fs.readFileSync(target), filename);
     return target;
   }
+
+  await scenario('etiquetas: cantidades inválidas, selección filtrada y PDF offline sin alterar datos', async (page, context) => {
+    await readyOffline(page);
+    const before = await page.evaluate(key => localStorage.getItem(key), key);
+    await page.locator('#reportButton').click();
+    await page.locator('#reportKind').selectOption('labels');
+    for (const value of ['0', '1.5', '101']) {
+      await page.locator('#labelQuantity').fill(value);
+      await page.locator('#downloadReport').click();
+      await page.locator('#reportStatus').filter({ hasText: /entera de 1 a 100/ }).waitFor();
+    }
+    await page.locator('#labelQuantity').fill('100');
+    await page.locator('#downloadReport').click();
+    await page.locator('#reportStatus').filter({ hasText: /supera 1000/ }).waitFor();
+    await page.locator('#cancelReport').click();
+    await page.locator('#searchInput').fill('O21121_7');
+    await page.locator('#reportButton').click();
+    await page.locator('#reportKind').selectOption('labels');
+    await page.locator('#labelQuantity').fill('3');
+    await page.locator('#reportVisibleOnly').check();
+    await context.setOffline(true);
+    try {
+      const target = await download(page, `etiquetas-v${VERSION}-offline.pdf`);
+      assert.match(path.basename(target), /etiquetas/);
+      assert.equal(await page.locator('#printReportView .report-card').count(), 3);
+      assert.equal(await page.locator('#printReportView .report-nuclide').count(), 3);
+      assert.match(await page.locator('#printReportView .report-title > span').first().textContent(), /3 etiquetas · 1 elemento · 1 isótopo/);
+      assert.match(await page.locator('#printReportView').textContent(), /Bq\/g/);
+      assert.match(await page.locator('#printReportView').textContent(), /Límite/);
+      assert.equal(await page.evaluate(key => localStorage.getItem(key), key), before);
+      await page.locator('#repairOffline').click();
+      await page.locator('#offlineStatus').filter({ hasText: 'Lista para usar' }).waitFor();
+      await page.screenshot({ path: path.join(output, `v${VERSION}-offline.png`) });
+    } finally { await context.setOffline(false); }
+  });
+
+  await scenario('permiso de lectura revocado conserva el estado y permite reabrir el formulario', async page => {
+    const before = await page.evaluate(key => localStorage.getItem(key), key);
+    await fillSource(page, 'READ-FAILURE');
+    await page.evaluate(key => {
+      window.originalStorageRead = Storage.prototype.getItem;
+      Storage.prototype.getItem = function (name) {
+        if (name === key) throw new DOMException('Acceso revocado', 'SecurityError');
+        return window.originalStorageRead.call(this, name);
+      };
+    }, key);
+    await page.locator('#saveInventory').click();
+    await page.locator('#inventoryStatus').filter({ hasText: /leer el almacenamiento/ }).waitFor();
+    await page.evaluate(() => { Storage.prototype.getItem = window.originalStorageRead; });
+    assert.equal(await page.evaluate(key => localStorage.getItem(key), key), before);
+    await page.locator('#cancelInventory').click();
+    await page.locator('#backupButton').click();
+  });
+
+  await scenario('una escritura externa durante el PDF conserva su selección y el texto compartido', async (page, context) => {
+    await readyOffline(page);
+    await page.locator('#searchInput').fill('1105141');
+    await page.locator('#reportButton').click();
+    await page.locator('#reportVisibleOnly').check();
+    await page.evaluate(() => {
+      const original = window.html2canvas;
+      window.html2canvas = async (...args) => {
+        window.capturingReport = true;
+        await new Promise(resolve => { window.resumeReport = resolve; });
+        return original(...args);
+      };
+      Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => false });
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async text => { window.sharedReportText = text; } } });
+      document.querySelector('#shareReport').click();
+    });
+    await page.waitForFunction(() => window.capturingReport);
+    const second = await context.newPage();
+    await second.goto(baseUrl, { waitUntil: 'networkidle' });
+    await second.evaluate(key => {
+      const model = JSON.parse(localStorage.getItem(key));
+      model.inventory.find(record => record.identificacion === '1105141').identificacion = 'CAMBIO EXTERNO';
+      model.revision += 1;
+      localStorage.setItem(key, JSON.stringify(model));
+    }, key);
+    await page.waitForFunction(() => !document.querySelector('#sourceList .source-card'));
+    const pending = page.waitForEvent('download', { timeout: 60000 });
+    await page.evaluate(() => window.resumeReport());
+    assertPdfBuffer(fs.readFileSync(await (await pending).path()), 'PDF con modelo capturado');
+    await page.locator('#reportDialog').waitFor({ state: 'hidden' });
+    assert.match(await page.evaluate(() => window.sharedReportText), /1105141/);
+    assert.doesNotMatch(await page.evaluate(() => window.sharedReportText), /CAMBIO EXTERNO/);
+    assert.match(await page.locator('#printReportView').textContent(), /1105141/);
+    assert.doesNotMatch(await page.locator('#printReportView').textContent(), /CAMBIO EXTERNO/);
+    await second.close();
+  });
 
   await scenario('el informe se bloquea si el HTML pierde sus estilos', async page => {
     await page.locator('#reportButton').click();
@@ -122,7 +213,7 @@ module.exports = async function ({ chromium, webkit, devices, baseUrl, output, c
     await page.keyboard.press('Escape');
     await page.locator('#inventoryDialog').waitFor({ state: 'hidden' });
     await page.locator('#reportButton').click();
-    await download(page, 'informe-v51-apis-opcionales.pdf');
+    await download(page, `informe-v${VERSION}-apis-opcionales.pdf`);
   }, () => {
     HTMLDialogElement.prototype.showModal = undefined;
     HTMLDialogElement.prototype.close = undefined;
@@ -134,7 +225,7 @@ module.exports = async function ({ chromium, webkit, devices, baseUrl, output, c
   await scenario('caché incompleta offline: recuperación comprensible y reparación sin pérdida', async (page, context) => {
     await readyOffline(page);
     const before = await page.evaluate(key => localStorage.getItem(key), key);
-    await page.evaluate(async () => { const cache = await caches.open('calculo-decaimientos-v51'); await cache.delete(new URL('./src/domain.js?v=51', location.href)); });
+    await page.evaluate(async VERSION => { const cache = await caches.open(`calculo-decaimientos-v${VERSION}`); await cache.delete(new URL(`./src/domain.js?v=${VERSION}`, location.href)); }, VERSION);
     await context.setOffline(true);
     try {
       const response = await page.goto(`${baseUrl}?damaged=1`, { waitUntil: 'domcontentloaded' });
@@ -171,11 +262,11 @@ module.exports = async function ({ chromium, webkit, devices, baseUrl, output, c
     await page.locator('#searchInput').fill('GRUPO GRANDE');
     await page.locator('#reportButton').click();
     await page.locator('#reportVisibleOnly').check();
-    await download(page, 'informe-v51-grupo-grande.pdf');
+    await download(page, `informe-v${VERSION}-grupo-grande.pdf`);
     assert.equal(await page.locator('#printReportView .report-nuclide').count(), 18);
     assert.ok(await page.locator('#printReportView .report-card').count() > 1);
     await page.emulateMedia({ media: 'print' });
-    const printed = await page.pdf({ path: path.join(output, 'impresion-v51.pdf'), preferCSSPageSize: true, printBackground: true });
+    const printed = await page.pdf({ path: path.join(output, `impresion-v${VERSION}.pdf`), preferCSSPageSize: true, printBackground: true });
     assert.ok(printed.subarray(0, 4).toString() === '%PDF');
     const printLayout = await page.evaluate(() => ({
       records: document.querySelectorAll('#printReportView .report-nuclide').length,
@@ -188,6 +279,11 @@ module.exports = async function ({ chromium, webkit, devices, baseUrl, output, c
 
   await check('actualización real entre dos pestañas conserva datos, borrador y PDF offline anterior', () => require('./update-browser.cjs')(browser, output));
   await browser.close();
+  await check('WebKit busca actualizaciones al arrancar y respeta permisos, fallos y borradores', async () => {
+    const browser = await webkit.launch({ headless: true, timeout: 20000 });
+    try { await require('./update-browser.cjs')(browser, output); }
+    finally { await browser.close(); }
+  });
   await check('perfil iPad WebKit con informe PDF', async () => {
     const browser = await webkit.launch({ headless: true, timeout: 20000 });
     try {
@@ -196,7 +292,8 @@ module.exports = async function ({ chromium, webkit, devices, baseUrl, output, c
       await page.goto(baseUrl, { waitUntil: 'networkidle' });
       await page.locator('#reportButton:not([disabled])').waitFor();
       await page.locator('#reportButton').click();
-      await download(page, 'informe-v51-ipad.pdf');
+      await page.locator('#reportKind').selectOption('labels');
+      await download(page, `etiquetas-v${VERSION}-ipad.pdf`);
       assert.equal(await page.locator('.report-nuclide').count(), 27);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     } finally { await browser.close(); }

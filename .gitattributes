@@ -1,0 +1,5 @@
+# Las huellas offline deben coincidir en Windows, Git y GitHub Pages.
+* text=auto eol=lf
+*.png binary
+*.ttf binary
+*.zip binary

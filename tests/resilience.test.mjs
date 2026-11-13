@@ -5,6 +5,8 @@ import { calculateDecay, parseDateOnly, toFiniteNumber, numberText, validateInve
 import { createRepository } from '../src/repository.js';
 import { parseCsv } from '../src/csv.js';
 import { recordPresentation } from '../src/measurements.js';
+import { formatNumber } from '../src/format.js';
+import { labelSelection } from '../src/labels.js';
 
 const record = { record_id: 'test', tipo: 'fuente_puntual', identificacion: 'TEST', radionuclido: 'X', actividad_referencia_bq: '1000', incertidumbre_actividad_bq: '50', fecha_referencia: '2024-01-01', operador_actividad: '=', tipo_incertidumbre: 'expandida_k2', observaciones: '' };
 const isotope = { isotopo: 'X', semivida_valor: '10', semivida_unidad: 'dias', fuente: '' };
@@ -14,6 +16,93 @@ function storage(initial = {}) {
   return { values, getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)), removeItem: key => values.delete(key) };
 }
 const draft = () => ({ ...record, masa_g: '', actividad_especifica_bq_g: '', incertidumbre_especifica_bq_g: '' });
+
+test('una lectura fallida después del arranque no permite sobrescribir datos legibles', () => {
+  const original = JSON.stringify(model());
+  const store = storage({ [STORAGE_KEY]: original });
+  const repository = createRepository(store);
+  const loaded = repository.load(model());
+  const getItem = store.getItem;
+  store.getItem = () => { throw new Error('Permiso revocado'); };
+  assert.equal(repository.save({ ...loaded.model, inventory: [] }).ok, false);
+  store.getItem = getItem;
+  assert.equal(repository.save(loaded.model).ok, false);
+  assert.equal(store.getItem(STORAGE_KEY), original);
+});
+
+test('una lectura fallida al recuperar no borra el principal ni las copias', () => {
+  for (const blockedKey of [STORAGE_KEY, STORAGE_BACKUP_KEY, STORAGE_RECOVERY_KEY]) {
+    const store = storage({ [STORAGE_KEY]: '{roto', [STORAGE_BACKUP_KEY]: JSON.stringify(model()) });
+    const before = [...store.values];
+    const repository = createRepository(store);
+    const getItem = store.getItem;
+    store.getItem = key => { if (key === blockedKey) throw new Error('No legible'); return getItem(key); };
+    const loaded = repository.load(model());
+    assert.equal(repository.persistRecovered(loaded.model).ok, false);
+    assert.deepEqual([...store.values], before);
+    assert.match(JSON.parse(repository.exportData(loaded.model)).warning, /leer/);
+  }
+});
+
+test('una historia de recuperación con entradas corruptas se conserva sin excepción', () => {
+  for (const entries of [[null], [4], [{}], [{ values: [] }]]) {
+    const history = JSON.stringify(entries);
+    const store = storage({ [STORAGE_KEY]: '{roto', [STORAGE_RECOVERY_KEY]: history });
+    const repository = createRepository(store);
+    const loaded = repository.load(model());
+    assert.equal(repository.persistRecovered(loaded.model).ok, false);
+    assert.equal(store.getItem(STORAGE_KEY), '{roto');
+    assert.equal(store.getItem(STORAGE_RECOVERY_KEY), history);
+  }
+});
+
+test('el contador de revisiones no desborda ni vuelve silenciosamente a cero', () => {
+  const original = JSON.stringify({ ...model(), revision: Number.MAX_SAFE_INTEGER });
+  const store = storage({ [STORAGE_KEY]: original });
+  const repository = createRepository(store);
+  const loaded = repository.load(model());
+  assert.equal(repository.save(loaded.model).ok, false);
+  assert.equal(store.getItem(STORAGE_KEY), original);
+});
+
+test('cantidades positivas pequeñas nunca se presentan como cero', () => {
+  assert.equal(formatNumber(0.004, 2), '4,000e-3');
+  assert.equal(formatNumber(0, 2), '0');
+  assert.equal(formatNumber(0.005, 2), '0,01');
+});
+
+test('etiquetas valida límites y conserva grupos y registros intactos', () => {
+  const groups = [{ id: 'A', records: [record] }, { id: 'B', records: [record] }];
+  const before = JSON.stringify(groups);
+  const labels = labelSelection(groups, '3');
+  assert.equal(labels.length, 6);
+  assert.equal(labels[0], groups[0]);
+  assert.equal(JSON.stringify(groups), before);
+  for (const value of ['', 'roto', 0, -1, 1.5, 101]) assert.throws(() => labelSelection(groups, value), /entera/);
+  assert.throws(() => labelSelection(Array(11).fill(groups[0]), 100), /1000/);
+  assert.equal(labelSelection(Array(10).fill(groups[0]), 100).length, 1000);
+});
+
+test('leer Bq-g no admite convertir un producto positivo subdesbordado en cero', () => {
+  assert.equal(validateInventoryRecords([{ ...record, tipo: 'muestra_contaminada', masa_g: '1e-300', actividad_referencia_bq: '0', actividad_especifica_bq_g: '1e-300', incertidumbre_actividad_bq: '' }]).ok, false);
+});
+
+test('IndexedDB que lanza al abrir produce un error accionable', async () => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'indexedDB');
+  const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  try {
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: {} });
+    Object.defineProperty(globalThis, 'indexedDB', { configurable: true, value: { open() { throw new Error('Bloqueado'); } } });
+    const result = await createRepository(storage()).withWriteLock(() => assert.fail('No debe guardar'));
+    assert.equal(result.ok, false);
+    assert.match(result.reason, /permisos/);
+  } finally {
+    if (previousNavigator) Object.defineProperty(globalThis, 'navigator', previousNavigator);
+    else delete globalThis.navigator;
+    if (previous) Object.defineProperty(globalThis, 'indexedDB', previous);
+    else delete globalThis.indexedDB;
+  }
+});
 
 test('los números admiten decimal español y exponente, sin conversiones ambiguas', () => {
   for (const invalid of ['', ' ', true, false, [], {}, '0x10', '0b11', 'Infinity', 'NaN', '1.2.3', '1,2,3', '1e-400']) assert.equal(toFiniteNumber(invalid), null, String(invalid));

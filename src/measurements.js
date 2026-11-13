@@ -1,5 +1,5 @@
-import { calculateDecay } from './domain.js?v=51';
-import { formatActivity, formatDate, formatDescriptor, formatNumber, halfLifeLabel, shouldShowUncertainty, toleranceBounds } from './format.js?v=51';
+import { calculateDecay } from './domain.js?v=53';
+import { formatActivity, formatDate, formatDescriptor, formatNumber, halfLifeLabel, shouldShowUncertainty, toleranceBounds } from './format.js?v=53';
 
 export function activityText(value, isLimit = false) {
   const formatted = formatActivity(value);

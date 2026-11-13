@@ -1,4 +1,4 @@
-import { LIMITS } from './config.js?v=51';
+import { LIMITS } from './config.js?v=53';
 
 export function parseCsv(text) {
   if (typeof text !== 'string' || !text.trim()) throw new Error('El fichero CSV está vacío.');

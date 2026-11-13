@@ -61,6 +61,7 @@ la propia aplicación para mantener el funcionamiento sin conexión:
 - `src/view.js`: renderizado seguro mediante nodos DOM y `textContent`.
 - `src/report.js`: documento HTML interno e información para compartir. El HTML
   intermedio no se muestra al usuario.
+- `src/labels.js`: selección validada de copias, reutilizando tarjetas y mediciones del informe.
 - `src/pdf.js`: conversión local de cada página HTML a PDF y descarga del archivo.
 - `src/report-layout.js`: medición real de tarjetas y redistribución de contenido extenso.
 - `src/pwa.js`: instalación, estado offline, reparación y aceptación de actualizaciones.
@@ -107,6 +108,18 @@ los vuelve a descargar con conexión. Si la aplicación no puede arrancar offlin
 presenta una página de recuperación; no borres los datos del sitio. El código
 de una pestaña anterior conserva su propia caché durante una actualización.
 
+Al arrancar, la aplicación busca versiones nuevas en la misma dirección desde
+la que se instaló. **Buscar actualizaciones** permite repetir esa comprobación.
+La nueva versión se descarga y se verifica en segundo plano. Cuando está lista,
+el aviso ofrece **Actualizar y reiniciar** y **Más tarde**. El reinicio necesita
+tu aceptación y se pospone mientras haya un formulario, guardado o PDF activo.
+La versión descargada también se puede aplicar sin conexión.
+
+Las actualizaciones llegan cuando se publica una versión nueva en el servidor
+de la aplicación. Para que el móvil reciba este botón, primero debe cargar la
+publicación v53 desde esa misma dirección. El botón muestra el resultado de la
+búsqueda y permite reintentar si el servidor o la conexión fallan.
+
 Hay dos límites inevitables:
 
 - La primera entrega debe llegar al navegador desde algún origen HTTP/HTTPS. Si
@@ -132,7 +145,7 @@ La batería inicia y detiene su propio servidor local en un puerto libre.
 Para usar un servidor existente, define `APP_URL`. Incluye sintaxis, integridad
 de publicación, fórmula de decaimiento, fechas, validación de
 actividad y masa, integridad de los 27 registros, recuperación del
-  almacenamiento, CRUD, búsqueda y filtros, informe PDF A4 vertical, modo sin conexión,
+almacenamiento, CRUD, búsqueda y filtros, informe PDF A4 horizontal, modo sin conexión,
 accesibilidad básica, desbordamientos responsive y una matriz en Chromium y
 WebKit. Cuando están instalados, también se ejecuta una comprobación en Google
 Chrome y Microsoft Edge. Firefox se intenta por defecto con un límite de
@@ -199,8 +212,8 @@ seguridad ni los ficheros de desarrollo. El service worker solo elimina cachés
 propias, mantiene cada versión de código y datos como una unidad coherente y
 espera confirmación antes de activar una actualización.
 
-Para publicar una nueva versión, ejecuta `node scripts/release.mjs 50` (sustituye
-50 por un número superior al actual) y después `npm test`. El script sincroniza
+Para publicar una nueva versión, ejecuta `node scripts/release.mjs 54` (sustituye
+54 por un número superior al actual) y después `npm test`. El script sincroniza
 versiones de módulos, recursos, manifiesto, service worker y paquetes, y regenera
 las huellas. Publica todos los recursos juntos; no reutilices una versión ya
 distribuida. `npm run release` regenera la publicación durante desarrollo y

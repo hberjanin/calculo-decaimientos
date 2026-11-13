@@ -4,11 +4,12 @@ import vm from 'node:vm';
 import { webcrypto, createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-const source = await readFile(new URL('../sw.js', import.meta.url), 'utf8');
+// La publicación de prueba es independiente de la versión instalada.
+const source = (await readFile(new URL('../sw.js', import.meta.url), 'utf8')).replace(/const VERSION = '\d+'/, "const VERSION = '51'");
 const scope = 'https://test.invalid/app/';
 const hash = text => createHash('sha256').update(text).digest('hex');
 const release = { version: '51', resources: [{ url: './index.html', sha256: hash('html51') }, { url: './app.js?v=51', sha256: hash('js51') }] };
-function harness({ failFetch = false, badHash = false, quota = false, clients = 1 } = {}) {
+function harness({ failFetch = false, badHash = false, quota = false, clients = 1, stalledFetch = false } = {}) {
   const stores = new Map();
   const handlers = new Map();
   const messages = [];
@@ -31,8 +32,9 @@ function harness({ failFetch = false, badHash = false, quota = false, clients = 
   };
   const clientList = Array.from({ length: clients }, () => ({ postMessage: value => messages.push(value) }));
   const context = vm.createContext({
-    URL, Response, Map, Promise, Uint8Array, crypto: webcrypto, caches,
-    fetch: async url => {
+    URL, Response, Map, Promise, Uint8Array, AbortController, setTimeout: stalledFetch ? callback => setTimeout(callback, 5) : setTimeout, clearTimeout, crypto: webcrypto, caches,
+    fetch: async (url, options) => {
+      if (stalledFetch) return new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(new Error('Tiempo agotado'))));
       if (!online) throw new Error('offline');
       const text = corrupt ? 'otra-publicación' : String(url).includes('app.js') ? 'js51' : 'html51';
       const response = new Response(text);
@@ -129,4 +131,19 @@ test('informa a la pestaña de la versión activa y de la integridad del shell',
   assert.equal(reply.type, 'RUNTIME_STATUS');
   assert.equal(reply.version, '51');
   assert.equal(reply.complete, true);
+});
+
+test('reparar una caché íntegra offline no la marca como incompleta', async () => {
+  const worker = harness();
+  await worker.event('install');
+  worker.setOnline(false);
+  await worker.event('message', { data: { type: 'REPAIR_SHELL' } });
+  assert.equal(worker.messages.at(-1).complete, true);
+  assert.equal(await (await worker.navigate()).text(), 'html51');
+});
+
+test('una descarga sin respuesta se cancela y no deja una instalación incompleta', async () => {
+  const worker = harness({ stalledFetch: true });
+  await assert.rejects(worker.event('install'), /Tiempo agotado/);
+  assert.deepEqual(await worker.caches.keys(), []);
 });

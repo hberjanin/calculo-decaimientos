@@ -1,5 +1,5 @@
-import { APP_VERSION, SCHEMA_VERSION } from './src/config.js?v=51';
-import { fetchCsv } from './src/csv.js?v=51';
+import { APP_VERSION, SCHEMA_VERSION } from './src/config.js?v=53';
+import { fetchCsv } from './src/csv.js?v=53';
 import {
   normalizeModel,
   parseDateOnly,
@@ -7,14 +7,15 @@ import {
   typeCategory,
   validateInventoryDraft,
   validateIsotopeDraft
-} from './src/domain.js?v=51';
-import { downloadPdf, createReportPdf } from './src/pdf.js?v=51';
-import { buildReport, buildShareText } from './src/report.js?v=51';
-import { createRepository } from './src/repository.js?v=51';
-import { createView } from './src/view.js?v=51';
-import { formatDescriptor } from './src/format.js?v=51';
-import { assertRuntimeReady, setupInstallation, setupOffline } from './src/pwa.js?v=51';
-import { repairReportLayout } from './src/report-layout.js?v=51';
+} from './src/domain.js?v=53';
+import { downloadPdf, createReportPdf } from './src/pdf.js?v=53';
+import { buildReport, buildShareText } from './src/report.js?v=53';
+import { createRepository } from './src/repository.js?v=53';
+import { createView } from './src/view.js?v=53';
+import { formatDescriptor } from './src/format.js?v=53';
+import { assertRuntimeReady, setupInstallation, setupOffline } from './src/pwa.js?v=53';
+import { repairReportLayout } from './src/report-layout.js?v=53';
+import { buildLabels } from './src/labels.js?v=53';
 
 const repository = createRepository();
 const view = createView();
@@ -291,9 +292,9 @@ function reportGroups() {
   return byId('reportVisibleOnly').checked ? state.visibleGroups : state.groups;
 }
 
-function prepareReport() {
-  const groups = reportGroups();
-  buildReport(view.nodes.printReportView, groups, state.model.isotopes, state.calculationDate, byId('reportVisibleOnly').checked);
+function prepareReport({ groups, isotopes, date, kind, visibleOnly, quantity }) {
+  const builder = kind === 'labels' ? buildLabels : buildReport;
+  builder(view.nodes.printReportView, groups, isotopes, date, visibleOnly, quantity);
   view.showStatus(view.nodes.reportStatus, groups.length ? '' : 'No hay elementos para incluir.', !groups.length);
   return groups;
 }
@@ -301,19 +302,24 @@ function prepareReport() {
 function setReportBusy(busy) {
   state.reportBusy = busy;
   view.nodes.reportDialog.setAttribute('aria-busy', String(busy));
-  ['cancelReport', 'closeReport', 'shareReport', 'downloadReport', 'reportVisibleOnly'].forEach(id => {
+  ['cancelReport', 'closeReport', 'shareReport', 'downloadReport', 'reportVisibleOnly', 'reportKind', 'labelQuantity'].forEach(id => {
     byId(id).disabled = busy;
   });
 }
 
 async function generateReportFile() {
-  const key = JSON.stringify([state.model, state.calculationDate, reportGroups().map(group => group.key)]);
+  // Una escritura externa durante la captura no debe mezclar fechas o modelos.
+  const selection = { groups: reportGroups(), isotopes: state.model.isotopes, date: state.calculationDate,
+    kind: byId('reportKind').value, visibleOnly: byId('reportVisibleOnly').checked, quantity: byId('labelQuantity').value };
+  const key = JSON.stringify([state.model, selection]);
   if (state.reportFile && state.reportKey === key) return state.reportFile;
   await assertRuntimeReady();
-  const groups = prepareReport();
+  const groups = prepareReport(selection);
   if (!groups.length) return null;
   view.showStatus(view.nodes.reportStatus, 'Generando el PDF local…');
-  const result = await createReportPdf(view.nodes.printReportView, state.calculationDate);
+  const result = await createReportPdf(view.nodes.printReportView, selection.date, { kind: selection.kind });
+  result.shareText = buildShareText(groups, selection.isotopes, selection.date);
+  result.date = selection.date;
   state.reportFile = result;
   state.reportKey = key;
   return result;
@@ -363,12 +369,9 @@ async function shareReport() {
   if (state.reportBusy) return;
   setReportBusy(true);
   try {
-    const groups = reportGroups();
-    const isotopes = state.model.isotopes;
-    const date = state.calculationDate;
     const result = await generateReportFile();
     if (!result) return;
-    const text = buildShareText(groups, isotopes, date);
+    const text = result.shareText;
     const canShareFile = canSharePdfFile(result.file);
     if (canShareFile) {
       if (navigator.userActivation?.isActive === false) {
@@ -377,7 +380,7 @@ async function shareReport() {
       }
       await navigator.share({
         title: 'Cálculo de actividades',
-        text: `Informe con fecha de cálculo ${date}.`,
+        text: `Informe con fecha de cálculo ${result.date}.`,
         files: [result.file]
       });
       view.toast('Informe PDF compartido.');
@@ -451,10 +454,16 @@ function setupEvents() {
   byId('isotopesButton').addEventListener('click', openIsotopes);
   byId('reportButton').addEventListener('click', () => {
     byId('reportVisibleOnly').checked = false;
+    byId('reportKind').value = 'report';
+    byId('labelOptions').classList.add('hidden');
     state.reportFile = null;
     state.reportKey = '';
     view.showStatus(view.nodes.reportStatus);
     view.openDialog(view.nodes.reportDialog, byId('reportVisibleOnly'));
+  });
+  byId('reportKind').addEventListener('change', () => {
+    byId('labelOptions').classList.toggle('hidden', byId('reportKind').value !== 'labels');
+    view.showStatus(view.nodes.reportStatus);
   });
 
   view.nodes.sourceList.addEventListener('click', event => {

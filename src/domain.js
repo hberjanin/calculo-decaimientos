@@ -7,7 +7,7 @@ import {
   MILLISECONDS_PER_DAY,
   POINT_TYPES,
   SCHEMA_VERSION
-} from './config.js?v=51';
+} from './config.js?v=53';
 
 export function toFiniteNumber(value) {
   if (typeof value !== 'string' && typeof value !== 'number') return null;
@@ -128,7 +128,8 @@ export function validateInventoryRecords(input) {
         return;
       }
       if (specific == null) specific = activity / mass;
-      if (!Number.isFinite(specific) || !valuesAgree(activity, specific * mass)) {
+      if (!Number.isFinite(specific) || !valuesAgree(activity, specific * mass)
+        || specific > 0 && activity === 0 || activity > 0 && specific === 0) {
         warnings.push(`Registro ${index + 1}: Bq y Bq/g no son coherentes con la masa.`);
         return;
       }

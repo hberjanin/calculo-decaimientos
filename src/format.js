@@ -1,4 +1,4 @@
-import { parseDateOnly } from './domain.js?v=51';
+import { parseDateOnly } from './domain.js?v=53';
 
 function descriptorKey(value) {
   return String(value ?? '')
@@ -80,7 +80,8 @@ export function formatDate(isoDate) {
 export function formatNumber(value, maximumFractionDigits = 2) {
   if (!Number.isFinite(value)) return '—';
   const absolute = Math.abs(value);
-  if ((absolute > 0 && absolute < 0.001) || absolute >= 1e12) return value.toExponential(3).replace('.', ',');
+  // Ninguna cantidad positiva debe mostrarse como cero por el redondeo visual.
+  if ((absolute > 0 && absolute < Math.max(0.001, 0.5 * 10 ** -maximumFractionDigits)) || absolute >= 1e12) return value.toExponential(3).replace('.', ',');
   return new Intl.NumberFormat('es-ES', { maximumFractionDigits, minimumFractionDigits: 0 }).format(value);
 }
 

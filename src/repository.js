@@ -7,8 +7,8 @@ import {
   STORAGE_BACKUP_KEY,
   STORAGE_RECOVERY_KEY,
   STORAGE_KEY
-} from './config.js?v=51';
-import { normalizeModel } from './domain.js?v=51';
+} from './config.js?v=53';
+import { normalizeModel } from './domain.js?v=53';
 
 const LEGACY_SCHEMA_VERSION = 1;
 
@@ -62,10 +62,6 @@ function parseJson(value) {
   try { return JSON.parse(value); } catch { return null; }
 }
 
-function read(storage, key) {
-  try { return storage.getItem(key); } catch { return null; }
-}
-
 function write(storage, key, value) {
   try { storage.setItem(key, value); return true; } catch { return false; }
 }
@@ -95,6 +91,13 @@ export function createRepository(candidateStorage) {
   const storage = resolved.storage;
   let observedRaw;
   let readOnly = false;
+  // Tras una lectura fallida, solo una recarga puede volver a autorizar escrituras.
+  let readFailed = false;
+  const readFailure = () => ({ ok: false, reason: 'No se pudo leer el almacenamiento con seguridad. Guarda una copia y revisa los permisos del sitio antes de recargar; no se sobrescribió nada.' });
+  function read(key) {
+    try { return storage.getItem(key); }
+    catch { readFailed = true; return null; }
+  }
   function normalizeCandidate(candidate, defaultIsotopes) {
     const migrated = migrateCandidateSchema(candidate);
     if (!migrated) return { ok: false, warnings: [] };
@@ -107,10 +110,11 @@ export function createRepository(candidateStorage) {
     const defaultResult = normalizeModel(defaultModel, defaultModel.isotopes);
     if (!defaultResult.ok) throw new Error('Los datos incluidos con la aplicación no son válidos.');
 
-    const primaryRaw = read(storage, STORAGE_KEY);
+    const primaryRaw = read(STORAGE_KEY);
     observedRaw = primaryRaw;
     const primaryJson = parseJson(primaryRaw);
-    readOnly = primaryJson?.schemaVersion > SCHEMA_VERSION;
+    readOnly = readFailed || primaryJson?.schemaVersion > SCHEMA_VERSION;
+    if (readFailed) warnings.push(readFailure().reason);
     const primary = normalizeCandidate(primaryJson, defaultResult.model.isotopes);
     if (primary.ok) {
       const migrationWarning = primary.migrated
@@ -126,7 +130,7 @@ export function createRepository(candidateStorage) {
       ? 'Los datos pertenecen a una versión más reciente. Usa esa versión o guarda una copia; esta versión no los sobrescribirá.'
       : 'Los datos principales estaban dañados. Se conservarán antes de cualquier recuperación.');
 
-    const backupRaw = read(storage, STORAGE_BACKUP_KEY);
+    const backupRaw = read(STORAGE_BACKUP_KEY);
     const backup = normalizeCandidate(parseJson(backupRaw), defaultResult.model.isotopes);
     if (backup.ok) {
       warnings.push('Se ha recuperado la última copia local válida.');
@@ -138,8 +142,8 @@ export function createRepository(candidateStorage) {
     }
     if (backupRaw) warnings.push('La copia local tampoco era válida.');
 
-    const legacyInventoryRaw = read(storage, LEGACY_INVENTORY_KEY);
-    const legacyIsotopesRaw = read(storage, LEGACY_ISOTOPES_KEY);
+    const legacyInventoryRaw = read(LEGACY_INVENTORY_KEY);
+    const legacyIsotopesRaw = read(LEGACY_ISOTOPES_KEY);
     const legacyInventory = parseJson(legacyInventoryRaw);
     const legacyIsotopes = parseJson(legacyIsotopesRaw);
     if (Array.isArray(legacyInventory) || Array.isArray(legacyIsotopes)) {
@@ -162,17 +166,19 @@ export function createRepository(candidateStorage) {
   }
 
   function currentRevision(defaultIsotopes) {
-    const current = normalizeCandidate(parseJson(read(storage, STORAGE_KEY)), defaultIsotopes);
+    const current = normalizeCandidate(parseJson(read(STORAGE_KEY)), defaultIsotopes);
     return current.ok ? current.model.revision : null;
   }
 
   function save(model, expectedRevision = model.revision, { force = false, recovering = false } = {}) {
+    if (readFailed) return readFailure();
     if (readOnly) return { ok: false, reason: 'Abre la versión más reciente o guarda una copia de los datos. No se sobrescribió nada.' };
     const normalized = normalizeModel(model, model.isotopes);
     if (!normalized.ok) return { ok: false, reason: 'Los datos que se intentan guardar no son válidos.' };
 
-    const previous = read(storage, STORAGE_KEY);
+    const previous = read(STORAGE_KEY);
     const persistedRevision = currentRevision(normalized.model.isotopes);
+    if (readFailed) return readFailure();
     if (observedRaw !== undefined && previous !== observedRaw) {
       return { ok: false, conflict: true, reason: 'Los datos cambiaron en otra pestaña o se borraron. Recarga la aplicación antes de guardar.' };
     }
@@ -181,17 +187,21 @@ export function createRepository(candidateStorage) {
       return { ok: false, conflict: true, reason: 'Los datos cambiaron en otra pestaña. Reabre el formulario antes de guardar.' };
     }
 
+    const revision = Math.max(expectedRevision, persistedRevision ?? 0) + 1;
+    if (!Number.isSafeInteger(revision)) return { ok: false, reason: 'Se alcanzó el límite de revisiones. Guarda una copia de los datos antes de continuar.' };
     const next = {
       ...normalized.model,
       schemaVersion: SCHEMA_VERSION,
-      revision: Math.max(expectedRevision, persistedRevision ?? 0) + 1,
+      revision,
       updatedAt: new Date().toISOString()
     };
     const validPrevious = previous && normalizeCandidate(parseJson(previous), model.isotopes).ok;
     if (validPrevious && !write(storage, STORAGE_BACKUP_KEY, previous)) {
       return { ok: false, reason: 'No hay espacio para la copia de seguridad. Guarda una copia en un archivo y libera espacio del navegador; no se modificaron los datos.' };
     }
-    if (!previous && !read(storage, STORAGE_BACKUP_KEY) && !write(storage, STORAGE_BACKUP_KEY, JSON.stringify(next))) {
+    const backup = previous ? null : read(STORAGE_BACKUP_KEY);
+    if (readFailed) return readFailure();
+    if (!previous && !backup && !write(storage, STORAGE_BACKUP_KEY, JSON.stringify(next))) {
       return { ok: false, reason: 'No se pudo crear la copia local. Guarda una copia en un archivo y revisa el espacio y los permisos del navegador.' };
     }
     if (!write(storage, STORAGE_KEY, JSON.stringify(next))) {
@@ -207,14 +217,17 @@ export function createRepository(candidateStorage) {
   }
 
   function persistRecovered(model) {
+    if (readFailed) return readFailure();
     if (readOnly) return save(model);
-    if (read(storage, STORAGE_KEY) !== observedRaw) return { ok: false, conflict: true, reason: 'Otra pestaña guardó datos durante la recuperación. Recarga para usar su versión.' };
+    if (read(STORAGE_KEY) !== observedRaw) return { ok: false, conflict: true, reason: 'Otra pestaña guardó datos durante la recuperación. Recarga para usar su versión.' };
     const snapshot = Object.fromEntries([STORAGE_KEY, STORAGE_BACKUP_KEY, LEGACY_INVENTORY_KEY, LEGACY_ISOTOPES_KEY, LEGACY_VERSION_KEY]
-      .map(key => [key, read(storage, key)]).filter(([, value]) => value != null));
+      .map(key => [key, read(key)]).filter(([, value]) => value != null));
+    if (readFailed) return readFailure();
     if (Object.keys(snapshot).length) {
-      const rawHistory = read(storage, STORAGE_RECOVERY_KEY);
+      const rawHistory = read(STORAGE_RECOVERY_KEY);
       const history = rawHistory ? parseJson(rawHistory) : [];
-      if (!Array.isArray(history)) return { ok: false, reason: 'La copia de recuperación necesita revisión. Guarda una copia en un archivo; no se sobrescribió nada.' };
+      if (readFailed) return readFailure();
+      if (!Array.isArray(history) || history.some(entry => !entry || typeof entry !== 'object' || !entry.values || typeof entry.values !== 'object' || Array.isArray(entry.values))) return { ok: false, reason: 'La copia de recuperación necesita revisión. Guarda una copia en un archivo; no se sobrescribió nada.' };
       if (!history.some(entry => JSON.stringify(entry.values) === JSON.stringify(snapshot))) history.push({ savedAt: new Date().toISOString(), values: snapshot });
       if (!write(storage, STORAGE_RECOVERY_KEY, JSON.stringify(history))) return { ok: false, reason: 'No hay espacio para preservar los datos anteriores. Guarda una copia en un archivo antes de recuperar; no se sobrescribió nada.' };
     }
@@ -222,7 +235,8 @@ export function createRepository(candidateStorage) {
   }
 
   function readExternal(defaultIsotopes) {
-    const raw = read(storage, STORAGE_KEY);
+    const raw = read(STORAGE_KEY);
+    if (readFailed) return readFailure();
     const result = normalizeCandidate(parseJson(raw), defaultIsotopes);
     if (result.ok) observedRaw = raw;
     return result;
@@ -249,14 +263,18 @@ export function createRepository(candidateStorage) {
       const finish = result => { if (finished) return; finished = true; clearTimeout(timer); database?.close(); resolve(result); };
       const failed = () => finish({ ok: false, reason: 'No se pudo reservar el almacenamiento. Cierra otras pestañas y revisa los permisos del sitio.' });
       const timer = setTimeout(failed, 5_000);
-      const request = indexedDB.open('calculo-decaimientos-coordination', 1);
+      let request;
+      try { request = indexedDB.open('calculo-decaimientos-coordination', 1); }
+      catch { failed(); return; }
       request.onupgradeneeded = () => request.result.createObjectStore('writes');
       request.onerror = failed;
       request.onblocked = failed;
       request.onsuccess = () => {
         database = request.result;
         if (finished) { database.close(); return; }
-        const transaction = database.transaction('writes', 'readwrite');
+        let transaction;
+        try { transaction = database.transaction('writes', 'readwrite'); }
+        catch { failed(); return; }
         let result;
         transaction.objectStore('writes').get('lock').onsuccess = () => {
           if (!finished) { try { result = operation(); } catch { transaction.abort(); } }
@@ -269,8 +287,9 @@ export function createRepository(candidateStorage) {
   }
 
   function exportData(model) {
+    const values = Object.fromEntries([STORAGE_KEY, STORAGE_BACKUP_KEY, STORAGE_RECOVERY_KEY, LEGACY_INVENTORY_KEY, LEGACY_ISOTOPES_KEY, LEGACY_VERSION_KEY].map(key => [key, read(key)]));
     return JSON.stringify({ application: 'calculo-decaimientos', exportedAt: new Date().toISOString(), model,
-      storage: Object.fromEntries([STORAGE_KEY, STORAGE_BACKUP_KEY, STORAGE_RECOVERY_KEY, LEGACY_INVENTORY_KEY, LEGACY_ISOTOPES_KEY, LEGACY_VERSION_KEY].map(key => [key, read(storage, key)])) }, null, 2);
+      storage: values, ...(readFailed ? { warning: readFailure().reason } : {}) }, null, 2);
   }
 
   return { load, save, persistRecovered, readExternal, subscribe, exportData, withWriteLock, persistent: resolved.persistent };

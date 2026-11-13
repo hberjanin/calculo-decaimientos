@@ -4,6 +4,7 @@ process.env.PLAYWRIGHT_BROWSERS_PATH = process.env.PLAYWRIGHT_BROWSERS_PATH || '
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const VERSION = require('../package.json').version.split('.')[0];
 const { chromium, firefox, webkit, devices } = require('playwright');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -236,40 +237,40 @@ async function main() {
     assert.equal((await fetch(new URL('package.json', BASE_URL))).status, 404);
     assert.equal((await fetch(new URL('.backups/v33-before-audit-2026-10-19.zip', BASE_URL))).status, 404);
     assert.equal((await fetch(`${BASE_URL}assets/%252e%252e/package.json`)).status, 404);
-    const manifestResponse = await fetch(new URL('manifest.webmanifest?v=51', BASE_URL));
+    const manifestResponse = await fetch(new URL(`manifest.webmanifest?v=${VERSION}`, BASE_URL));
     assert.match(manifestResponse.headers.get('content-type') || '', /application\/manifest\+json/);
     const csvResponse = await fetch(new URL('inventario_radiactivo.csv', BASE_URL));
     assert.match(csvResponse.headers.get('content-type') || '', /text\/csv/);
 
     const indexText = await index.text();
-    assert.match(indexText, /app\.js\?v=51/);
-    assert.match(indexText, /styles\.css\?v=51/);
-    assert.match(indexText, /manifest\.webmanifest\?v=51/);
-    assert.match(indexText, /html2canvas-1\.4\.1\.min\.js\?v=51/);
-    assert.match(indexText, /jspdf-4\.2\.1\.umd\.min\.js\?v=51/);
-    const stylesheet = await (await fetch(new URL('styles.css?v=51', BASE_URL))).text();
+    assert.match(indexText, new RegExp(String.raw`app\.js\?v=${VERSION}`));
+    assert.match(indexText, new RegExp(String.raw`styles\.css\?v=${VERSION}`));
+    assert.match(indexText, new RegExp(String.raw`manifest\.webmanifest\?v=${VERSION}`));
+    assert.match(indexText, new RegExp(String.raw`html2canvas-1\.4\.1\.min\.js\?v=${VERSION}`));
+    assert.match(indexText, new RegExp(String.raw`jspdf-4\.2\.1\.umd\.min\.js\?v=${VERSION}`));
+    const stylesheet = await (await fetch(new URL(`styles.css?v=${VERSION}`, BASE_URL))).text();
     assert.match(stylesheet, /\.report-page\s*{[^}]*width:\s*297mm;[^}]*height:\s*210mm;/s);
     assert.match(stylesheet, /\.report-columns\s*{[^}]*grid-template-columns:\s*repeat\(3,/s);
     assert.match(stylesheet, /@media\s+print/);
     for (const file of ['app.js', 'src/csv.js', 'src/domain.js', 'src/format.js', 'src/pdf.js', 'src/report.js', 'src/repository.js', 'src/view.js']) {
-      const source = await (await fetch(new URL(`${file}?v=51`, BASE_URL))).text();
+      const source = await (await fetch(new URL(`${file}?v=${VERSION}`, BASE_URL))).text();
       const imports = [...source.matchAll(/from\s+['"]([^'"]+\.js(?:\?[^'"]*)?)['"]/g)].map(match => match[1]);
-      assert.ok(imports.every(specifier => specifier.endsWith('?v=51')), `${file}: importación sin versión`);
+      assert.ok(imports.every(specifier => specifier.endsWith(`?v=${VERSION}`)), `${file}: importación sin versión`);
     }
-    const appSource = await (await fetch(new URL('app.js?v=51', BASE_URL))).text();
+    const appSource = await (await fetch(new URL(`app.js?v=${VERSION}`, BASE_URL))).text();
     assert.doesNotMatch(appSource, /window\.print\s*\(/);
     assert.doesNotMatch(appSource, /emailReport|mailto:/i);
     assert.doesNotMatch(indexText, /id=["']emailReport["']|>\s*Correo\s*</i);
-    const workerSource = await (await fetch(new URL('sw.js?v=51', BASE_URL))).text();
-    assert.match(workerSource, /const VERSION = '51'/);
-    const precache = await (await fetch(new URL('precache-manifest.js?v=51', BASE_URL))).text();
-    assert.match(precache, /html2canvas-1\.4\.1\.min\.js\?v=51/);
-    assert.match(precache, /jspdf-4\.2\.1\.umd\.min\.js\?v=51/);
+    const workerSource = await (await fetch(new URL(`sw.js?v=${VERSION}`, BASE_URL))).text();
+    assert.ok(workerSource.includes(`const VERSION = '${VERSION}'`));
+    const precache = await (await fetch(new URL(`precache-manifest.js?v=${VERSION}`, BASE_URL))).text();
+    assert.match(precache, new RegExp(String.raw`html2canvas-1\.4\.1\.min\.js\?v=${VERSION}`));
+    assert.match(precache, new RegExp(String.raw`jspdf-4\.2\.1\.umd\.min\.js\?v=${VERSION}`));
     assert.doesNotMatch(workerSource, /navigationPreload\.enable/);
   });
 
   await check('manifest e iconos instalables', async () => {
-    const response = await fetch(new URL('manifest.webmanifest?v=51', BASE_URL));
+    const response = await fetch(new URL(`manifest.webmanifest?v=${VERSION}`, BASE_URL));
     const manifest = await response.json();
     assert.equal(manifest.name, 'Cálculo de decaimientos');
     assert.equal(manifest.display, 'standalone');
@@ -520,7 +521,7 @@ async function main() {
     await page.locator('#downloadReport').click();
     const download = await downloadPromise;
     assert.equal(download.suggestedFilename(), 'calculo-actividades-2026-10-19.pdf');
-    const pdfPath = path.join(OUTPUT, 'informe-v51.pdf');
+    const pdfPath = path.join(OUTPUT, `informe-v${VERSION}.pdf`);
     await download.saveAs(pdfPath);
 
     assert.equal(await page.locator('#printReportView h1').first().textContent(), 'Cálculo de actividades');
@@ -785,7 +786,7 @@ async function main() {
       assert.ok(metrics.document <= metrics.viewport + 1, `${viewport.name}: documento ${metrics.document}px`);
       assert.ok(metrics.body <= metrics.viewport + 1, `${viewport.name}: body ${metrics.body}px`);
       assert.deepEqual(metrics.clippedButtons, [], `${viewport.name}: texto cortado`);
-      await page.screenshot({ path: path.join(OUTPUT, `v51-${viewport.name}.png`), fullPage: false });
+      await page.screenshot({ path: path.join(OUTPUT, `v${VERSION}-${viewport.name}.png`), fullPage: false });
       await page.locator('#inventoryButton').click();
       const dialogBounds = await page.locator('#inventoryDialog').boundingBox();
       assert.ok(dialogBounds.x >= -1 && dialogBounds.x + dialogBounds.width <= viewport.width + 1);
@@ -820,35 +821,31 @@ async function main() {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(`${BASE_URL}?offline-prime=${Date.now()}`, { waitUntil: 'networkidle' });
     await waitForApp(page);
-    await page.evaluate(async () => {
-      if (!('serviceWorker' in navigator)) throw new Error('Service Worker no disponible');
-      await navigator.serviceWorker.ready;
-      if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
-    });
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker?.controller), null, { timeout: 20000 });
     const cacheNames = await page.evaluate(() => caches.keys());
-    assert.ok(cacheNames.includes('calculo-decaimientos-v51'));
-    assert.deepEqual(cacheNames.filter(name => name.startsWith('calculo-decaimientos-') && name !== 'calculo-decaimientos-v51'), []);
-    const cachedResources = await page.evaluate(async () => {
-      const cache = await caches.open('calculo-decaimientos-v51');
+    assert.ok(cacheNames.includes(`calculo-decaimientos-v${VERSION}`));
+    assert.deepEqual(cacheNames.filter(name => name.startsWith('calculo-decaimientos-') && name !== `calculo-decaimientos-v${VERSION}`), []);
+    const cachedResources = await page.evaluate(async VERSION => {
+      const cache = await caches.open(`calculo-decaimientos-v${VERSION}`);
       return (await cache.keys()).map(request => {
         const url = new URL(request.url);
         return `${url.pathname}${url.search}`;
       });
-    });
+    }, VERSION);
     const requiredOfflineResources = [
       '/index.html',
-      '/styles.css?v=51',
-      '/app.js?v=51',
-      '/src/pdf.js?v=51',
-      '/src/report.js?v=51',
-      '/inventario_radiactivo.csv?v=51',
-      '/isotopos.csv?v=51',
-      '/assets/fonts/Montserrat-Bold.ttf?v=51',
-      '/assets/fonts/Roboto-Regular.ttf?v=51',
-      '/assets/vendor/html2canvas-1.4.1.min.js?v=51',
-      '/assets/vendor/jspdf-4.2.1.umd.min.js?v=51',
-      '/assets/brand/at-logo-horizontal.png?v=51',
-      '/icons/app-icon-512.png?v=51'
+      `/styles.css?v=${VERSION}`,
+      `/app.js?v=${VERSION}`,
+      `/src/pdf.js?v=${VERSION}`,
+      `/src/report.js?v=${VERSION}`,
+      `/inventario_radiactivo.csv?v=${VERSION}`,
+      `/isotopos.csv?v=${VERSION}`,
+      `/assets/fonts/Montserrat-Bold.ttf?v=${VERSION}`,
+      `/assets/fonts/Roboto-Regular.ttf?v=${VERSION}`,
+      `/assets/vendor/html2canvas-1.4.1.min.js?v=${VERSION}`,
+      `/assets/vendor/jspdf-4.2.1.umd.min.js?v=${VERSION}`,
+      `/assets/brand/at-logo-horizontal.png?v=${VERSION}`,
+      `/icons/app-icon-512.png?v=${VERSION}`
     ];
     for (const resource of requiredOfflineResources) {
       assert.ok(cachedResources.includes(resource), `recurso ausente de la caché offline: ${resource}`);
@@ -865,7 +862,7 @@ async function main() {
       const downloadPromise = page.waitForEvent('download', { timeout: 30_000 });
       await page.locator('#downloadReport').click();
       const download = await downloadPromise;
-      const offlinePdfPath = path.join(OUTPUT, 'informe-v51-offline.pdf');
+      const offlinePdfPath = path.join(OUTPUT, `informe-v${VERSION}-offline.pdf`);
       await download.saveAs(offlinePdfPath);
       assertPdfBuffer(fs.readFileSync(offlinePdfPath), 'Informe offline');
     } finally {

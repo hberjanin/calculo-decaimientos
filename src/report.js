@@ -1,13 +1,13 @@
-import { DAYS_PER_YEAR } from './config.js?v=51';
-import { groupTitle, toFiniteNumber } from './domain.js?v=51';
+import { DAYS_PER_YEAR } from './config.js?v=53';
+import { groupTitle, toFiniteNumber } from './domain.js?v=53';
 import {
   formatDate,
   formatDescriptor,
   formatNumber,
   toleranceBounds
-} from './format.js?v=51';
-import { recordPresentation } from './measurements.js?v=51';
-import { element } from './view.js?v=51';
+} from './format.js?v=53';
+import { recordPresentation } from './measurements.js?v=53';
+import { element } from './view.js?v=53';
 
 // La capacidad representa espacio vertical aproximado, no número de registros.
 // El A4 horizontal dispone de tres columnas; los materiales, tolerancias y
@@ -183,7 +183,7 @@ function reportHeader(calculationDate, counts, visibleOnly) {
       element('img', {
         className: 'report-logo',
         attributes: {
-          src: 'assets/brand/at-logo-horizontal.png?v=51',
+          src: 'assets/brand/at-logo-horizontal.png?v=53',
           alt: 'Aplicaciones Tecnológicas · Radiation Protection & Medical'
         }
       })

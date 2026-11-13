@@ -1,4 +1,4 @@
-const VERSION = '51';
+const VERSION = '53';
 importScripts(`./precache-manifest.js?v=${VERSION}`);
 const RELEASE = self.DECAIMIENTO_RELEASE;
 if (RELEASE?.version !== VERSION) throw new Error('El inventario de recursos pertenece a otra publicación.');
@@ -22,10 +22,14 @@ async function matchesHash(response, entry) {
 }
 
 async function verifiedResponse(entry) {
-  const response = await fetch(entry.url, { cache: 'reload', credentials: 'same-origin', redirect: 'error' });
-  if (!response.ok || response.type !== 'basic') throw new Error('Recurso local no disponible');
-  if (!await matchesHash(response, entry)) throw new Error('La versión del recurso no coincide con la publicación');
-  return response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const response = await fetch(entry.url, { cache: 'reload', credentials: 'same-origin', redirect: 'error', signal: controller.signal });
+    if (!response.ok || response.type !== 'basic') throw new Error('Recurso local no disponible');
+    if (!await matchesHash(response, entry)) throw new Error('La versión del recurso no coincide con la publicación');
+    return response;
+  } finally { clearTimeout(timer); }
 }
 
 async function installShell() {
@@ -84,7 +88,8 @@ self.addEventListener('message', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     let ready = await complete(cache);
-    if (!ready || event.data.type === 'REPAIR_SHELL') {
+    // Una caché íntegra ya está reparada, también si el usuario está offline.
+    if (!ready) {
       try { await repairShell(); ready = true; } catch { ready = false; }
     }
     await notifyStatus(event.source, ready);

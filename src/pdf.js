@@ -1,4 +1,4 @@
-import { repairReportLayout } from './report-layout.js?v=51';
+import { repairReportLayout } from './report-layout.js?v=53';
 
 const PDF_MIME = 'application/pdf';
 const PAGE_WIDTH_MM = 297;
@@ -174,12 +174,12 @@ function assertCanvasPresentation(canvas, page) {
   }
 }
 
-export function reportFilename(calculationDate) {
+export function reportFilename(calculationDate, kind = 'report') {
   const safeDate = /^\d{4}-\d{2}-\d{2}$/.test(calculationDate) ? calculationDate : 'sin-fecha';
-  return `calculo-actividades-${safeDate}.pdf`;
+  return `${kind === 'labels' ? 'etiquetas-actividades' : 'calculo-actividades'}-${safeDate}.pdf`;
 }
 
-export async function createReportPdf(container, calculationDate) {
+export async function createReportPdf(container, calculationDate, { kind = 'report' } = {}) {
   const { html2canvas, JsPdf } = libraryFunctions();
   if (document.fonts?.ready) await document.fonts.ready;
   repairReportLayout(container);
@@ -206,7 +206,7 @@ export async function createReportPdf(container, calculationDate) {
       putOnlyUsedFonts: true
     });
     pdf.setProperties({
-      title: 'Cálculo de actividades',
+      title: kind === 'labels' ? 'Etiquetas de actividades' : 'Cálculo de actividades',
       subject: `Fecha de cálculo: ${calculationDate}`,
       author: 'Aplicaciones Tecnológicas',
       creator: 'Cálculo de decaimientos'
@@ -263,7 +263,7 @@ export async function createReportPdf(container, calculationDate) {
 
     const blob = pdf.output('blob');
     if (!(blob instanceof Blob) || blob.size < 1_000) throw new Error('El archivo PDF generado está vacío.');
-    const filename = reportFilename(calculationDate);
+    const filename = reportFilename(calculationDate, kind);
     let file = null;
     try {
       file = new File([blob], filename, { type: PDF_MIME, lastModified: Date.now() });
